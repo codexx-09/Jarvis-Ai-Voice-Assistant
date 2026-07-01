@@ -18,7 +18,7 @@ CORS(app)
 
 
 
-genai.configure(api_key="AIzaSyBaoIgnLCpETz_1LMlKteGexVpJedvschs")  
+genai.configure(api_key="***************************")  
 model = genai.GenerativeModel("gemini-2.5-flash")
 
 

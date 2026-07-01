@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Jarvis AI</title>
+
+<style>
+body {
+    margin: 0;
+
+    /* BACKGROUND IMAGE */
+    background: url("xZ8x9ES.jpg") no-repeat center center fixed;
+    background-size: cover;
+
+    color: #00f7ff;
+    font-family: Orbitron, sans-serif;
+    overflow: hidden;
+    position: relative;
+}
+
+/* DARK OVERLAY FOR BETTER VISIBILITY */
+body::before{
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.65);
+    z-index: -1;
+}
+
+.container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+}
+
+/* ARC REACTOR */
+.circle {
+    width: 220px;
+    height: 220px;
+    border: 3px solid #00f7ff;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 40px #00f7ff;
+    backdrop-filter: blur(2px);
+}
+
+/* rotating rings */
+.circle::before {
+    content: "";
+    position: absolute;
+    width: 260px;
+    height: 260px;
+    border: 2px dashed #00f7ff;
+    border-radius: 50%;
+    top: -20px;
+    left: -20px;
+    animation: rotate 8s linear infinite;
+}
+
+.circle::after {
+    content: "";
+    position: absolute;
+    width: 180px;
+    height: 180px;
+    border: 2px solid #00f7ff;
+    border-radius: 50%;
+    top: 20px;
+    left: 20px;
+    animation: rotateReverse 5s linear infinite;
+}
+
+/* moving scan line */
+.scan {
+    position: absolute;
+    width: 100%;
+    height: 3px;
+    background: #00f7ff;
+    top: 50%;
+    animation: scanMove 2s linear infinite;
+}
+
+@keyframes scanMove {
+    0% { top: 0%; opacity: 0.2; }
+    50% { opacity: 1; }
+    100% { top: 100%; opacity: 0.2; }
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+@keyframes rotateReverse {
+    from { transform: rotate(360deg); }
+    to { transform: rotate(0deg); }
+}
+
+/* Listening effect */
+.listening {
+    box-shadow: 0 0 80px red !important;
+    border-color: red;
+}
+
+/* CHAT */
+.chatbox {
+    width: 350px;
+    height: 200px;
+    border: 2px solid #00f7ff;
+
+    
+    margin-top: 80px;
+
+    overflow-y: auto;
+    padding: 10px;
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(4px);
+}
+
+/* INPUT */
+.input-box {
+    margin-top: 18px;
+    display: flex;
+}
+
+input {
+    flex: 1;
+    padding: 8px;
+    background: rgba(0,0,0,0.7);
+    border: 1px solid #00f7ff;
+    color: #00f7ff;
+}
+
+button {
+    padding: 8px 15px;
+    background: transparent;
+    border: 2px solid #00f7ff;
+    color: #00f7ff;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #00f7ff;
+    color: black;
+}
+
+/* HUD */
+.panel {
+    position: absolute;
+    border: 1px solid #00f7ff;
+    padding: 8px;
+    font-size: 12px;
+    background: rgba(0,0,0,0.5);
+    backdrop-filter: blur(3px);
+}
+
+.top-left { top: 20px; left: 20px; }
+.top-right { top: 20px; right: 20px; }
+.bottom-left { bottom: 20px; left: 20px; }
+.bottom-right { bottom: 20px; right: 20px; }
+
+</style>
+</head>
+
+<body>
+
+<div class="panel top-left">SYSTEM ONLINE</div>
+<div class="panel top-right" id="clock"></div>
+<div class="panel bottom-left">JARVIS AI</div>
+<div class="panel bottom-right">ACTIVE</div>
+
+<div class="container">
+    <div class="circle" id="reactor">
+        <div class="scan"></div>
+    </div>
+
+    <div class="chatbox" id="chatbox"></div>
+
+    <!-- TEXT INPUT -->
+    <div class="input-box">
+        <input type="text" id="userInput" placeholder="Type command...">
+        <button onclick="sendText()">Send</button>
+    </div>
+</div>
+
+<script>
+const reactor = document.getElementById("reactor");
+const chatbox = document.getElementById("chatbox");
+
+// Clock
+setInterval(()=>{
+    document.getElementById("clock").innerText = new Date().toLocaleTimeString();
+},1000);
+
+// Chat
+function addMessage(sender,msg){
+    chatbox.innerHTML += `<p><b>${sender}:</b> ${msg}</p>`;
+    chatbox.scrollTop = chatbox.scrollHeight;
+}
+
+// Speak
+function speak(text){
+    addMessage("Jarvis",text);
+    const speech = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(speech);
+}
+
+// Backend
+async function processCommand(command){
+    try{
+        const res = await fetch("http://127.0.0.1:5000/command",{
+            method:"POST",
+            headers:{"Content-Type":"application/json"},
+            body:JSON.stringify({command})
+        });
+
+        const data = await res.json();
+        speak(data.reply);
+
+    }catch{
+        speak("Backend error");
+    }
+}
+
+// TEXT INPUT
+function sendText(){
+    const input=document.getElementById("userInput");
+    const cmd=input.value;
+    if(!cmd) return;
+
+    addMessage("You",cmd);
+    processCommand(cmd);
+    input.value="";
+}
+
+// ALWAYS LISTENING
+function startJarvis(){
+    const recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    recognition.continuous = true;
+
+    recognition.onresult = (event)=>{
+        const cmd = event.results[event.results.length-1][0].transcript;
+
+        addMessage("You",cmd);
+        reactor.classList.add("listening");
+
+        processCommand(cmd);
+
+        setTimeout(()=>{
+            reactor.classList.remove("listening");
+        },1000);
+    };
+
+    recognition.onend = ()=>startJarvis();
+    recognition.start();
+}
+
+startJarvis();
+</script>
+
+</body>
+</html>
